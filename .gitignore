@@ -123,3 +123,8 @@ ZephyrModuleFile.txt
 
 # Node dependecies
 node_modules
+
+debug/
+CMakePresets.json
+mcux_include.json
+svd/

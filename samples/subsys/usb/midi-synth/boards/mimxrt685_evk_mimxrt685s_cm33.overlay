@@ -3,6 +3,20 @@
 		i2s-codec-rx = &i2s0;
 		i2s-codec-tx = &i2s1;
 	};
+
+	usb_midi: usb_midi {
+		compatible = "zephyr,midi2-device";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		label = "Zephyr USB-MIDI Sample";
+
+		midi_in_out@0 {
+			reg = <0 1>;
+			protocol = "midi1-up-to-128b";
+			label = "MIDI-IN-OUT";
+		};
+	};
 };
 
 &i3c0 {

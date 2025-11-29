@@ -87,6 +87,13 @@ static const struct usbd_midi_ops ops = {
 
 #include "sine.h"
 
+#include <math.h>
+#include <stdint.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #define I2S_CODEC_TX DT_ALIAS(i2s_codec_tx)
 
 #define SAMPLE_FREQUENCY CONFIG_SAMPLE_FREQ
@@ -213,6 +220,8 @@ int main(void)
 	}
 
 	printk("start streams\n");
+
+	printk("%f\n", M_PI);
 
 	for (;;)
 	{

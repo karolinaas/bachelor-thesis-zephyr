@@ -11,3 +11,6 @@
 # language statistics.
 *.pat linguist-generated
 *.svg linguist-generated
+
+* text=auto
+*.c text

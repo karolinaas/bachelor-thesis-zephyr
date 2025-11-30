@@ -7,6 +7,8 @@
  * @brief Sample application for USB MIDI 2.0 device class
  */
 
+double kmitocet_dopici = 0.0;
+
 #include <sample_usbd.h>
 
 #include <zephyr/device.h>
@@ -48,6 +50,11 @@ static const struct ump_endpoint_dt_spec ump_ep_dt =
 const struct ump_stream_responder_cfg responder_cfg =
 	UMP_STREAM_RESPONDER(midi, usbd_midi_send, &ump_ep_dt);
 
+double midi_freq(int midi_note)
+{
+	return (double) 440 * pow(2, (double)(midi_note - 69) / (double)12);
+}
+
 static void on_midi_packet(const struct device *dev, const struct midi_ump ump)
 {
 	LOG_INF("Received MIDI packet (MT=%X)", UMP_MT(ump));
@@ -57,6 +64,9 @@ static void on_midi_packet(const struct device *dev, const struct midi_ump ump)
 		/* Only send MIDI1 channel voice messages back to the host */
 		LOG_INF("Send back MIDI1 message %02X %02X %02X",
 			UMP_MIDI_STATUS(ump), UMP_MIDI1_P1(ump), UMP_MIDI1_P2(ump));
+		LOG_INF("Note frequency: %f", midi_freq((int)UMP_MIDI1_P1(ump)));
+		kmitocet_dopici = midi_freq((int)UMP_MIDI1_P1(ump));
+		if (UMP_MIDI_STATUS(ump) == 0x80) kmitocet_dopici = 0.0;
 		usbd_midi_send(dev, ump);
 		break;
 	case UMP_MT_UMP_STREAM:
@@ -85,7 +95,7 @@ static const struct usbd_midi_ops ops = {
 #include <zephyr/toolchain.h>
 #include <string.h>
 
-#include "sine.h"
+//#include "sine.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -223,25 +233,55 @@ int main(void)
 
 	printk("%f\n", M_PI);
 
+	double phase = 0.0;
+
 	for (;;)
 	{
 		bool started = false;
 
 		while (1)
 		{
-			void *mem_block;
-			uint32_t block_size = BLOCK_SIZE;
+			// void *mem_block;
+			// uint32_t block_size = BLOCK_SIZE;
 			int i;
+
+			double duration = 0.1;
+			double amplitude = 1.0;
+			double note_frequency = kmitocet_dopici;
+			double phase_increment = 2 * M_PI * note_frequency / SAMPLE_FREQUENCY;
+
+			// uint32_t num_of_samples_per_one_sine_period = (SAMPLE_FREQUENCY / note_frequency);
+			// uint32_t sine_buf_len = num_of_samples_per_one_sine_period * 2;
+			uint32_t sine_buf_len = (SAMPLE_FREQUENCY * duration - 1) * NUMBER_OF_CHANNELS;
+
+			uint16_t sine_buf[sine_buf_len];
 
 			for (i = 0; i < CONFIG_I2S_INIT_BUFFERS; i++)
 			{
-				BUILD_ASSERT(
-					BLOCK_SIZE <= __16kHz16bit_stereo_sine_pcm_len,
-					"BLOCK_SIZE is bigger than test sine wave buffer size."
-				);
-				mem_block = (void *)&__16kHz16bit_stereo_sine_pcm;
+				// BUILD_ASSERT(
+				// 	BLOCK_SIZE <= __16kHz16bit_stereo_sine_pcm_len,
+				// 	"BLOCK_SIZE is bigger than test sine wave buffer size."
+				// );
+				// mem_block = (void *)&__16kHz16bit_stereo_sine_pcm;
 
-				ret = i2s_buf_write(i2s_dev_codec, mem_block, block_size);
+				// ret = i2s_buf_write(i2s_dev_codec, mem_block, block_size);
+
+				for (uint32_t j = 0; j < sine_buf_len; j += 2)
+				{
+					sine_buf[j] = amplitude * 32767 * ((sin(phase) + 1) / 2);
+					sine_buf[j + 1] = sine_buf[j];
+
+					phase += phase_increment;
+
+					if (phase > 2 * M_PI) phase = phase - (2 * M_PI);
+
+					// if (i >= sine_buf_len)
+					// {
+					// 	phase = 0.0;
+					// }
+				}
+
+				ret = i2s_buf_write(i2s_dev_codec, (void*)&sine_buf, sine_buf_len);
 
 				if (ret < 0)
 				{
